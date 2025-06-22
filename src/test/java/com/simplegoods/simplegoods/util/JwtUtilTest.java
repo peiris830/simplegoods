@@ -2,6 +2,8 @@ package com.simplegoods.simplegoods.util;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -22,100 +24,99 @@ public class JwtUtilTest {
     }
 
     @Test
-    void testGenerateTokenWithUsername() {
+    void testGenerateAccessToken() {
         String username = "testuser";
-        String token = jwtUtil.generateToken(username);
-        
+        Authentication auth = new UsernamePasswordAuthenticationToken(username, "password", new ArrayList<>());
+        String token = jwtUtil.generateAccessToken(auth);
+
         assertNotNull(token);
         assertFalse(token.isEmpty());
-        
+
         // Verify we can extract the username back
-        String extractedUsername = jwtUtil.extractUsername(token);
+        String extractedUsername = jwtUtil.getUsername(token);
         assertEquals(username, extractedUsername);
-        
+
         System.out.println("[DEBUG_LOG] Generated token: " + token);
         System.out.println("[DEBUG_LOG] Extracted username: " + extractedUsername);
     }
 
     @Test
-    void testGenerateTokenWithUserDetails() {
+    void testGenerateAccessTokenWithUserDetails() {
         UserDetails userDetails = User.builder()
                 .username("testuser")
                 .password("password")
                 .authorities(new ArrayList<>())
                 .build();
-        
-        String token = jwtUtil.generateToken(userDetails);
-        
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, "password", userDetails.getAuthorities());
+        String token = jwtUtil.generateAccessToken(auth);
+
         assertNotNull(token);
         assertFalse(token.isEmpty());
-        
+
         // Verify we can extract the username back
-        String extractedUsername = jwtUtil.extractUsername(token);
+        String extractedUsername = jwtUtil.getUsername(token);
         assertEquals(userDetails.getUsername(), extractedUsername);
-        
+
         System.out.println("[DEBUG_LOG] Generated token with UserDetails: " + token);
         System.out.println("[DEBUG_LOG] Extracted username: " + extractedUsername);
     }
 
     @Test
-    void testValidateToken() {
+    void testIsTokenValid() {
         String username = "testuser";
-        String token = jwtUtil.generateToken(username);
-        
-        // Test validation with username
-        assertTrue(jwtUtil.validateToken(token, username));
-        
-        // Test validation with wrong username
-        assertFalse(jwtUtil.validateToken(token, "wronguser"));
-        
+        Authentication auth = new UsernamePasswordAuthenticationToken(username, "password", new ArrayList<>());
+        String token = jwtUtil.generateAccessToken(auth);
+
         // Test general validation
-        assertTrue(jwtUtil.validateToken(token));
-        
+        assertTrue(jwtUtil.isTokenValid(token));
+
+        // Test that we can extract username from valid token
+        String extractedUsername = jwtUtil.getUsername(token);
+        assertEquals(username, extractedUsername);
+
         System.out.println("[DEBUG_LOG] Token validation tests passed");
     }
 
     @Test
-    void testValidateTokenWithUserDetails() {
+    void testTokenValidationWithUserDetails() {
         UserDetails userDetails = User.builder()
                 .username("testuser")
                 .password("password")
                 .authorities(new ArrayList<>())
                 .build();
-        
-        String token = jwtUtil.generateToken(userDetails);
-        
-        // Test validation with correct UserDetails
-        assertTrue(jwtUtil.validateToken(token, userDetails));
-        
-        // Test validation with different UserDetails
-        UserDetails differentUser = User.builder()
-                .username("differentuser")
-                .password("password")
-                .authorities(new ArrayList<>())
-                .build();
-        
-        assertFalse(jwtUtil.validateToken(token, differentUser));
-        
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, "password", userDetails.getAuthorities());
+        String token = jwtUtil.generateAccessToken(auth);
+
+        // Test general validation
+        assertTrue(jwtUtil.isTokenValid(token));
+
+        // Test that we can extract the correct username
+        String extractedUsername = jwtUtil.getUsername(token);
+        assertEquals(userDetails.getUsername(), extractedUsername);
+
         System.out.println("[DEBUG_LOG] UserDetails token validation tests passed");
     }
 
     @Test
-    void testExtractExpiration() {
+    void testTokenGeneration() {
         String username = "testuser";
-        String token = jwtUtil.generateToken(username);
-        
-        assertNotNull(jwtUtil.extractExpiration(token));
-        
-        System.out.println("[DEBUG_LOG] Token expiration: " + jwtUtil.extractExpiration(token));
+        Authentication auth = new UsernamePasswordAuthenticationToken(username, "password", new ArrayList<>());
+        String token = jwtUtil.generateAccessToken(auth);
+
+        assertNotNull(token);
+        assertTrue(jwtUtil.isTokenValid(token));
+
+        System.out.println("[DEBUG_LOG] Token generation test passed");
     }
 
     @Test
     void testInvalidToken() {
         String invalidToken = "invalid.token.here";
-        
-        assertFalse(jwtUtil.validateToken(invalidToken));
-        
+
+        assertFalse(jwtUtil.isTokenValid(invalidToken));
+
         System.out.println("[DEBUG_LOG] Invalid token validation test passed");
     }
 }
