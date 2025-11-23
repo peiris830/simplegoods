@@ -21,7 +21,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtUtil jwtUtil;
 
     public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder,
-                           AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
+            AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
@@ -42,22 +42,27 @@ public class AuthServiceImpl implements AuthService {
         user.setUsername((registerRequest.getUsername()));
         user.setEmail(registerRequest.getEmail());
         user.setPasswordHash(passwordEncoder.encode(registerRequest.getPassword()));
-        userRepository.save(user);
+
+        User savedUser = userRepository.save(user);
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(registerRequest.getUsername(), registerRequest.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(registerRequest.getUsername(), registerRequest.getPassword()));
         String token = jwtUtil.generateAccessToken(authentication);
-        return new AuthResponse(token);
+
+        return new AuthResponse(token, savedUser.getId());
     }
 
     @Override
     public AuthResponse login(LoginRequest loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword())
-        );
+                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
         String token = jwtUtil.generateAccessToken(authentication);
-        return new AuthResponse(token);
+
+        // Fetch user to get ID
+        User user = userRepository.findByUsername(loginRequest.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        return new AuthResponse(token, user.getId());
     }
 
 }
