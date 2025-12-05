@@ -1,5 +1,7 @@
 package com.simplegoods.simplegoods.service;
 
+import com.simplegoods.simplegoods.exception.BadRequestException;
+import com.simplegoods.simplegoods.exception.ResourceNotFoundException;
 import com.simplegoods.simplegoods.model.*;
 import com.simplegoods.simplegoods.repository.CartItemRepository;
 import com.simplegoods.simplegoods.repository.OrderRepository;
@@ -30,11 +32,11 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public Order placeOrder(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         List<CartItem> cartItems = cartItemRepository.findByUser(user);
         if (cartItems.isEmpty()) {
-            throw new RuntimeException("Cannot place order with empty cart");
+            throw new BadRequestException("Cannot place order with empty cart");
         }
 
         // Calculate total
@@ -73,7 +75,19 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public List<Order> getUserOrders(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return orderRepository.findByUserOrderByCreatedAtDesc(user);
+    }
+
+    @Override
+    public Order getOrderById(Long orderId, Long userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        if (!order.getUser().getId().equals(userId)) {
+            throw new ResourceNotFoundException("Order not found");
+        }
+
+        return order;
     }
 }
