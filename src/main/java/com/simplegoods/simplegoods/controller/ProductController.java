@@ -46,4 +46,9 @@ public class ProductController {
         productService.deleteProduct(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Product>> search(@RequestParam String query) {
+        return ResponseEntity.ok(productService.searchProducts(query));
+    }
 }
