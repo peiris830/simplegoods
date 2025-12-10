@@ -21,63 +21,58 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+                return new BCryptPasswordEncoder();
+        }
 
-    @Bean   // expose the AuthenticationManager for AuthServiceImpl
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authConfig
-    ) throws Exception {
-        return authConfig.getAuthenticationManager();
-    }
+        @Bean // expose the AuthenticationManager for AuthServiceImpl
+        public AuthenticationManager authenticationManager(
+                        AuthenticationConfiguration authConfig) throws Exception {
+                return authConfig.getAuthenticationManager();
+        }
 
-    @Bean   // custom UserDetails + BCrypt provider
-    public DaoAuthenticationProvider daoAuthProvider(
-            CustomUserDetailsService uds,
-            PasswordEncoder passwordEncoder
-    ) {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(uds);
-        provider.setPasswordEncoder(passwordEncoder);
-        return provider;
-    }
+        @Bean // custom UserDetails + BCrypt provider
+        public DaoAuthenticationProvider daoAuthProvider(
+                        CustomUserDetailsService uds,
+                        PasswordEncoder passwordEncoder) {
+                DaoAuthenticationProvider provider = new DaoAuthenticationProvider(uds);
+                provider.setPasswordEncoder(passwordEncoder);
+                return provider;
+        }
 
-    @Bean   // the JWT filter itself
-    public JwtAuthenticationFilter jwtAuthenticationFilter(
-            JwtUtil jwtUtil,
-            CustomUserDetailsService uds
-    ) {
-        return new JwtAuthenticationFilter(jwtUtil, uds);
-    }
+        @Bean // the JWT filter itself
+        public JwtAuthenticationFilter jwtAuthenticationFilter(
+                        JwtUtil jwtUtil,
+                        CustomUserDetailsService uds) {
+                return new JwtAuthenticationFilter(jwtUtil, uds);
+        }
 
-    @Bean   // the main security chain
-    public SecurityFilterChain securityFilterChain(
-            HttpSecurity http,
-            DaoAuthenticationProvider daoAuthProvider,
-            JwtAuthenticationFilter jwtAuthFilter
-    ) throws Exception {
-        http
-                // disable CSRF for a stateless API
-                .csrf(AbstractHttpConfigurer::disable)
-                // plug in authentication provider
-                .authenticationProvider(daoAuthProvider)
-                // route security rules
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                )
-                // no session—JWT only
-                .sessionManagement(sm ->
-                        sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                // register filter BEFORE Spring's UsernamePasswordAuthenticationFilter
-                .addFilterBefore(
-                        jwtAuthFilter,
-                        UsernamePasswordAuthenticationFilter.class
-                );
+        @Bean // the main security chain
+        public SecurityFilterChain securityFilterChain(
+                        HttpSecurity http,
+                        DaoAuthenticationProvider daoAuthProvider,
+                        JwtAuthenticationFilter jwtAuthFilter) throws Exception {
+                http
+                                // disable CSRF for a stateless API
+                                .csrf(AbstractHttpConfigurer::disable)
+                                // plug in authentication provider
+                                .authenticationProvider(daoAuthProvider)
+                                // route security rules
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers("/api/auth/**").permitAll()
+                                                // Allow public access to view products (guest browsing)
+                                                .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                                                "/api/products/**")
+                                                .permitAll()
+                                                .anyRequest().authenticated())
+                                // no session—JWT only
+                                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                // register filter BEFORE Spring's UsernamePasswordAuthenticationFilter
+                                .addFilterBefore(
+                                                jwtAuthFilter,
+                                                UsernamePasswordAuthenticationFilter.class);
 
-        return http.build();
-    }
+                return http.build();
+        }
 }
